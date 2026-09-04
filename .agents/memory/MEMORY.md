@@ -1,1 +1,2 @@
 - [JWT client sessions](jwt-client-session.md) — generated browser clients need an explicit token getter plus persistence after auth mutations.
+- [Release smoke validation](release-validation.md) — seeded API journeys run through a named prepublish validation gate.
