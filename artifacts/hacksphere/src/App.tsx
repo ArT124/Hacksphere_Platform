@@ -62,7 +62,7 @@ function EmptyState({ icon: Icon = Rocket, title, text, action }: { icon?: typeo
 function AppShell({ children, title, eyebrow }: { children: React.ReactNode; title?: string; eyebrow?: string }) {
   const [location, setLocation] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { data: user } = useGetCurrentUser({ query: { queryKey: getGetCurrentUserQueryKey(), retry: false, enabled: Boolean(localStorage.getItem('hacksphere_token')) } });
+  const { data: user } = useGetCurrentUser({ query: { queryKey: getGetCurrentUserQueryKey(), retry: false } });
   const logout = useLogout();
   const nav = [
     { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
