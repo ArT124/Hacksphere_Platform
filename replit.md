@@ -1,45 +1,57 @@
-# [Project name]
+# HackSphere
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+HackSphere is a developer platform for discovering hackathons, forming teams, submitting projects, and finding personalized build opportunities.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/api-server run dev` — run the API server
+- `pnpm --filter @workspace/hacksphere run dev` — run the web app through its managed workflow
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI
+- `pnpm --filter @workspace/db run push` — push DB schema changes (development only)
+- Required env: `DATABASE_URL` and `SESSION_SECRET`
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
+- Frontend: React, Vite, Tailwind CSS, Wouter, TanStack Query, Lucide React
 - API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Database: PostgreSQL + Drizzle ORM
+- Validation: Zod 4
+- API codegen: Orval
+- Authentication: signed JWT bearer tokens with bcrypt password hashing
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/hacksphere/src/` — web app pages, shell, and reusable UI
+- `artifacts/api-server/src/routes/` — REST route handlers
+- `artifacts/api-server/src/lib/seed.ts` — development seed data
+- `artifacts/api-server/src/middleware/auth.ts` — JWT authentication and role checks
+- `lib/api-spec/openapi.yaml` — source-of-truth API contract
+- `lib/db/src/schema/index.ts` — Drizzle relational schema
+- `lib/api-client-react/src/generated/` — generated React Query client
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- OpenAPI is the shared contract; frontend hooks and server validators are generated from it.
+- Hackathon discovery is filtered in the API before pagination, not by a frontend-only array.
+- Recommendations are explainable content-based scores using profile skills, interests, technology overlap, and event mode.
+- JWTs are returned by auth endpoints and attached as bearer tokens so the browser session persists without exposing password data.
+- Seed data is created only when the development database is empty, keeping restarts idempotent.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+HackSphere includes public discovery and detail pages, account creation and login, user dashboards, personalized recommendations, registrations, bookmarks, teams and invitations, project drafts and submissions, profile editing, organizer analytics, and admin analytics.
 
-## User preferences
+## Demo credentials
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- User: `user@hacksphere.dev` / `User@123`
+- Organizer: `organizer@hacksphere.dev` / `Organizer@123`
+- Admin: `admin@hacksphere.dev` / `Admin@123`
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Run codegen after every OpenAPI change.
+- The managed workflows provide `PORT` and `BASE_PATH`; do not hardcode either in application code.
+- Development database schema changes are applied with the Drizzle push command.

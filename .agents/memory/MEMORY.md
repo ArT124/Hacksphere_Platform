@@ -1,0 +1,1 @@
+- [JWT client sessions](jwt-client-session.md) — generated browser clients need an explicit token getter plus persistence after auth mutations.

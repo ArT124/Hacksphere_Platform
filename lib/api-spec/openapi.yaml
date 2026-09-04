@@ -3,20 +3,26 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: HackSphere developer platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
+  - name: hackathons
+  - name: registrations
+  - name: teams
+  - name: projects
+  - name: user
+  - name: organizer
+  - name: admin
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +30,839 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Create an account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Email already exists
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Log in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Authenticated session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthSession"
+        "401":
+          description: Invalid credentials
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Log out
+      responses:
+        "204":
+          description: Logged out
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+  /hackathons:
+    get:
+      operationId: listHackathons
+      tags: [hackathons]
+      summary: Search and filter hackathons
+      parameters:
+        - $ref: "#/components/parameters/Search"
+        - name: technology
+          in: query
+          schema: { type: string }
+        - name: category
+          in: query
+          schema: { type: string }
+        - name: mode
+          in: query
+          schema: { type: string, enum: [online, offline, hybrid] }
+        - name: difficulty
+          in: query
+          schema: { type: string, enum: [beginner, intermediate, advanced] }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [recommended, deadline, newest, popular, prize] }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 12 }
+      responses:
+        "200":
+          description: Paginated hackathons
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HackathonList"
+    post:
+      operationId: createHackathon
+      tags: [hackathons, organizer]
+      summary: Create a hackathon
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HackathonInput"
+      responses:
+        "201":
+          description: Created hackathon
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hackathon"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          description: Organizer access required
+  /hackathons/{id}:
+    get:
+      operationId: getHackathon
+      tags: [hackathons]
+      summary: Get hackathon details
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Hackathon details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hackathon"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: updateHackathon
+      tags: [hackathons, organizer]
+      summary: Update a hackathon
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HackathonUpdate"
+      responses:
+        "200":
+          description: Updated hackathon
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hackathon"
+        "403":
+          description: Organizer access required
+    delete:
+      operationId: deleteHackathon
+      tags: [hackathons, organizer]
+      summary: Delete a hackathon
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
+  /hackathons/{id}/register:
+    post:
+      operationId: registerForHackathon
+      tags: [registrations]
+      summary: Register for a hackathon
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "201":
+          description: Registration created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registration"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Authentication required
+        "409":
+          description: Already registered or event is full
+  /hackathons/{id}/bookmark:
+    post:
+      operationId: bookmarkHackathon
+      tags: [hackathons, user]
+      summary: Bookmark a hackathon
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Bookmark saved
+    delete:
+      operationId: unbookmarkHackathon
+      tags: [hackathons, user]
+      summary: Remove a bookmark
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Bookmark removed
+  /users/me/registrations:
+    get:
+      operationId: getMyRegistrations
+      tags: [registrations, user]
+      summary: List my registrations
+      responses:
+        "200":
+          description: Registrations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Registration"
+  /registrations/{id}:
+    delete:
+      operationId: cancelRegistration
+      tags: [registrations, user]
+      summary: Cancel a registration
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Cancelled
+  /recommendations:
+    get:
+      operationId: getRecommendations
+      tags: [hackathons, user]
+      summary: Get personalized hackathon recommendations
+      responses:
+        "200":
+          description: Ranked recommendations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Recommendation"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [user]
+      summary: Get the user dashboard summary
+      responses:
+        "200":
+          description: Dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+  /teams:
+    get:
+      operationId: getMyTeams
+      tags: [teams, user]
+      summary: List my teams
+      responses:
+        "200":
+          description: Teams
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Team"
+    post:
+      operationId: createTeam
+      tags: [teams]
+      summary: Create a team
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamInput"
+      responses:
+        "201":
+          description: Created team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+  /teams/{id}:
+    get:
+      operationId: getTeam
+      tags: [teams]
+      summary: Get team details
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+  /teams/{id}/invite:
+    post:
+      operationId: inviteToTeam
+      tags: [teams]
+      summary: Invite a user by email
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamInviteInput"
+      responses:
+        "201":
+          description: Invitation created
+  /invitations/{id}/accept:
+    post:
+      operationId: acceptInvitation
+      tags: [teams]
+      summary: Accept a team invitation
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Invitation accepted
+  /projects:
+    get:
+      operationId: getMyProjects
+      tags: [projects, user]
+      summary: List my projects
+      responses:
+        "200":
+          description: Projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a project draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectInput"
+      responses:
+        "201":
+          description: Created project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+  /projects/{id}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get project
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+    put:
+      operationId: updateProject
+      tags: [projects]
+      summary: Update project draft
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectUpdate"
+      responses:
+        "200":
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+  /projects/{id}/submit:
+    post:
+      operationId: submitProject
+      tags: [projects]
+      summary: Submit a project
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Submitted project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [user]
+      summary: Get my profile
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+    put:
+      operationId: updateProfile
+      tags: [user]
+      summary: Update my profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+  /notifications:
+    get:
+      operationId: getNotifications
+      tags: [user]
+      summary: Get notifications
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+  /organizer/dashboard:
+    get:
+      operationId: getOrganizerDashboard
+      tags: [organizer]
+      summary: Get organizer analytics summary
+      responses:
+        "200":
+          description: Organizer dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrganizerDashboard"
+  /admin/analytics:
+    get:
+      operationId: getAdminAnalytics
+      tags: [admin]
+      summary: Get platform analytics
+      responses:
+        "200":
+          description: Platform analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAnalytics"
+  /admin/users:
+    get:
+      operationId: getAdminUsers
+      tags: [admin]
+      summary: List platform users
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+  /admin/hackathons:
+    get:
+      operationId: getAdminHackathons
+      tags: [admin]
+      summary: List hackathons for moderation
+      responses:
+        "200":
+          description: Hackathons
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Hackathon"
 components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    Search:
+      name: search
+      in: query
+      schema: { type: string }
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
     HealthStatus:
       type: object
       properties:
-        status:
-          type: string
-      required:
-        - status
-
+        status: { type: string }
+      required: [status]
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [USER, ORGANIZER, ADMIN] }
+        bio: { type: ["string", "null"] }
+        skills:
+          type: array
+          items: { type: string }
+        interests:
+          type: array
+          items: { type: string }
+        avatarUrl: { type: ["string", "null"] }
+        profileCompletion: { type: integer }
+      required: [id, name, email, role, skills, interests, profileCompletion]
+    RegisterInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 2 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        skills:
+          type: array
+          items: { type: string }
+        interests:
+          type: array
+          items: { type: string }
+      required: [name, email, password]
+    LoginInput:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 1 }
+      required: [email, password]
+    AuthSession:
+      type: object
+      properties:
+        token: { type: string }
+        user:
+          $ref: "#/components/schemas/User"
+      required: [token, user]
+    Hackathon:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        slug: { type: string }
+        description: { type: string }
+        problemStatement: { type: string }
+        category: { type: string }
+        technologies:
+          type: array
+          items: { type: string }
+        mode: { type: string, enum: [online, offline, hybrid] }
+        location: { type: ["string", "null"] }
+        difficulty: { type: string, enum: [beginner, intermediate, advanced] }
+        registrationStart: { type: string, format: date-time }
+        registrationDeadline: { type: string, format: date-time }
+        startDate: { type: string, format: date-time }
+        submissionDeadline: { type: string, format: date-time }
+        prizePool: { type: integer }
+        teamSizeMin: { type: integer }
+        teamSizeMax: { type: integer }
+        eligibility: { type: string }
+        rules: { type: string }
+        faqs:
+          type: array
+          items: { type: string }
+        organizer:
+          $ref: "#/components/schemas/OrganizerSummary"
+        participants: { type: integer }
+        bookmarked: { type: boolean }
+        registered: { type: boolean }
+        coverTone: { type: string }
+      required: [id, title, slug, description, problemStatement, category, technologies, mode, difficulty, registrationStart, registrationDeadline, startDate, submissionDeadline, prizePool, teamSizeMin, teamSizeMax, eligibility, rules, faqs, organizer, participants, bookmarked, registered, coverTone]
+    HackathonInput:
+      type: object
+      properties:
+        title: { type: string, minLength: 3 }
+        description: { type: string, minLength: 20 }
+        problemStatement: { type: string, minLength: 20 }
+        category: { type: string }
+        technologies:
+          type: array
+          items: { type: string }
+        mode: { type: string, enum: [online, offline, hybrid] }
+        location: { type: string }
+        difficulty: { type: string, enum: [beginner, intermediate, advanced] }
+        registrationStart: { type: string, format: date-time }
+        registrationDeadline: { type: string, format: date-time }
+        startDate: { type: string, format: date-time }
+        submissionDeadline: { type: string, format: date-time }
+        prizePool: { type: integer, minimum: 0 }
+        teamSizeMin: { type: integer, minimum: 1 }
+        teamSizeMax: { type: integer, minimum: 1 }
+        eligibility: { type: string }
+        rules: { type: string }
+        faqs:
+          type: array
+          items: { type: string }
+      required: [title, description, problemStatement, category, technologies, mode, difficulty, registrationStart, registrationDeadline, startDate, submissionDeadline, prizePool, teamSizeMin, teamSizeMax, eligibility, rules, faqs]
+    HackathonUpdate:
+      allOf:
+        - $ref: "#/components/schemas/HackathonInput"
+    HackathonList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Hackathon"
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+        pages: { type: integer }
+      required: [items, page, limit, total, pages]
+    OrganizerSummary:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        avatarUrl: { type: ["string", "null"] }
+      required: [id, name]
+    Registration:
+      type: object
+      properties:
+        id: { type: integer }
+        status: { type: string, enum: [REGISTERED, CANCELLED, COMPLETED] }
+        createdAt: { type: string, format: date-time }
+        hackathon:
+          $ref: "#/components/schemas/Hackathon"
+      required: [id, status, createdAt, hackathon]
+    Recommendation:
+      allOf:
+        - $ref: "#/components/schemas/Hackathon"
+        - type: object
+          properties:
+            score: { type: integer }
+            reasons:
+              type: array
+              items: { type: string }
+          required: [score, reasons]
+    Dashboard:
+      type: object
+      properties:
+        registeredHackathons: { type: integer }
+        activeTeams: { type: integer }
+        projectsSubmitted: { type: integer }
+        certificates: { type: integer }
+        upcoming:
+          type: array
+          items:
+            $ref: "#/components/schemas/Hackathon"
+        recommendations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Recommendation"
+        activity:
+          type: array
+          items: { type: string }
+      required: [registeredHackathons, activeTeams, projectsSubmitted, certificates, upcoming, recommendations, activity]
+    Team:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string }
+        hackathonId: { type: ["integer", "null"] }
+        hackathonTitle: { type: ["string", "null"] }
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamMember"
+        memberCount: { type: integer }
+        maxMembers: { type: integer }
+        captainId: { type: integer }
+      required: [id, name, description, members, memberCount, maxMembers, captainId]
+    TeamMember:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        role: { type: string, enum: [CAPTAIN, MEMBER] }
+        skills:
+          type: array
+          items: { type: string }
+        avatarUrl: { type: ["string", "null"] }
+      required: [id, name, role, skills]
+    TeamInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 2 }
+        description: { type: string }
+        hackathonId: { type: integer }
+      required: [name, description]
+    TeamInviteInput:
+      type: object
+      properties:
+        email: { type: string, format: email }
+      required: [email]
+    Project:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string }
+        githubUrl: { type: ["string", "null"], format: uri }
+        demoUrl: { type: ["string", "null"], format: uri }
+        videoUrl: { type: ["string", "null"], format: uri }
+        technologies:
+          type: array
+          items: { type: string }
+        status: { type: string, enum: [DRAFT, SUBMITTED, UNDER_REVIEW, EVALUATED] }
+        teamId: { type: ["integer", "null"] }
+        teamName: { type: ["string", "null"] }
+        hackathonTitle: { type: ["string", "null"] }
+      required: [id, name, description, technologies, status]
+    ProjectInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 2 }
+        description: { type: string, minLength: 10 }
+        githubUrl: { type: string, format: uri }
+        demoUrl: { type: string, format: uri }
+        videoUrl: { type: string, format: uri }
+        technologies:
+          type: array
+          items: { type: string }
+        teamId: { type: integer }
+      required: [name, description, githubUrl, technologies]
+    ProjectUpdate:
+      allOf:
+        - $ref: "#/components/schemas/ProjectInput"
+    Profile:
+      allOf:
+        - $ref: "#/components/schemas/User"
+        - type: object
+          properties:
+            githubUrl: { type: ["string", "null"], format: uri }
+            linkedinUrl: { type: ["string", "null"], format: uri }
+            portfolioUrl: { type: ["string", "null"], format: uri }
+            projects:
+              type: array
+              items:
+                $ref: "#/components/schemas/Project"
+          required: [projects]
+    ProfileUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 2 }
+        bio: { type: string }
+        skills:
+          type: array
+          items: { type: string }
+        interests:
+          type: array
+          items: { type: string }
+        githubUrl: { type: string, format: uri }
+        linkedinUrl: { type: string, format: uri }
+        portfolioUrl: { type: string, format: uri }
+      required: [name, bio, skills, interests]
+    Notification:
+      type: object
+      properties:
+        id: { type: integer }
+        text: { type: string }
+        read: { type: boolean }
+        createdAt: { type: string, format: date-time }
+      required: [id, text, read, createdAt]
+    OrganizerDashboard:
+      type: object
+      properties:
+        totalHackathons: { type: integer }
+        totalRegistrations: { type: integer }
+        totalTeams: { type: integer }
+        projectsSubmitted: { type: integer }
+        registrationTrend:
+          type: array
+          items: { type: integer }
+        technologyDistribution:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              count: { type: integer }
+            required: [name, count]
+      required: [totalHackathons, totalRegistrations, totalTeams, projectsSubmitted, registrationTrend, technologyDistribution]
+    AdminAnalytics:
+      type: object
+      properties:
+        totalUsers: { type: integer }
+        totalOrganizers: { type: integer }
+        totalHackathons: { type: integer }
+        totalRegistrations: { type: integer }
+        totalProjects: { type: integer }
+        activeHackathons: { type: integer }
+      required: [totalUsers, totalOrganizers, totalHackathons, totalRegistrations, totalProjects, activeHackathons]
