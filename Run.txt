@@ -1,0 +1,18 @@
+ps1
+
+cd C:\Users\Lenovo\Downloads\HackSphere-Platform
+$env:DATABASE_URL = "postgres://hacksphere:hacksphere123@localhost:5432/hacksphere"
+$env:SESSION_SECRET = "change-me-to-a-long-secret"
+$env:NODE_ENV = "development"
+$env:PORT = "5000"
+pnpm --filter "@workspace/api-server" run build
+pnpm --filter "@workspace/api-server" run start
+
+
+
+ps 2
+
+cd C:\Users\Lenovo\Downloads\HackSphere-Platform
+$env:PORT = "5173"
+$env:BASE_PATH = "/"
+pnpm --filter "@workspace/hacksphere" run dev
